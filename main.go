@@ -12,7 +12,9 @@ func main() {
 	setupClFlags()
 
 	mux := http.NewServeMux()
+	mux.Handle("/stylesheets/", http.StripPrefix("/stylesheets", http.FileServer(http.FileSystem(http.Dir("./www/stylesheets")))))
 	mux.Handle("/hello", http.HandlerFunc(serveExamplePage))
+	mux.Handle("/", http.HandlerFunc(serveIndex))
 
 	fmt.Printf("Now listening on port %d!\n", port)
 	log.Fatalf("error while listening on port %d: %v\nExiting...\n", port, http.ListenAndServe(fmt.Sprintf("127.1:%d", port), mux))
