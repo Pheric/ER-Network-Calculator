@@ -7,5 +7,22 @@
 </head>
 <body>
     {{ template "header.html" }}
+
+    {{ if .Addr }}
+        <p>Address: {{ .Addr.String }}</p>
+        {{ if .BinAddr }}
+            <p>Binary: {{ .BinAddr }}</p>
+        {{ end }}
+        {{ if .IsCidr }}
+            <p>Subnet mask: {{ .Netmask }}</p>
+            <p>Network Address: {{ .Network.String }}</p>
+        {{ end }}
+    {{ else }}
+        <p>Invalid IP address!</p>
+    {{ end }}
+    <form action="/" method="get">
+        <input name="addr" type="text">
+        <input type="submit">
+    </form>
 </body>
 </html>
