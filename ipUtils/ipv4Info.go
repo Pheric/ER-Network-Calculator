@@ -92,6 +92,10 @@ func (ip Ipv4Addr) IsCidrFormatted() bool {
 	return ip[4] != -1
 }
 
+func (ip Ipv4Addr) GetPrefix() int {
+	return ip[4]
+}
+
 // If there's no prefix and the address is a normal private IP address, this will return its network's class
 // Otherwise, it prefers the prefix.
 // For example, the address '112.17.100.45/16' is a class B; '240.23.18.1' is a class E

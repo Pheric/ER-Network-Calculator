@@ -6,10 +6,11 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strings"
 )
 
 type IndexResponse struct {
-	CAddr   ipUtils.Ipv4Addr
+	CAddr   ipUtils.IpAddr
 	BinAddr string
 	Network string
 	Prefix  int
@@ -42,11 +43,23 @@ func getIpInfo(addr string) IndexResponse {
 		return IndexResponse{}
 	}
 
-	ip, err := ipUtils.ParseIpv4(addr)
-	if err != nil {
-		return IndexResponse{
-			Error: err.Error(),
-			IsValid: false,
+	var ip ipUtils.IpAddr
+	var err error
+	if strings.Count(addr, ":") >= 2 { // IPv6
+		ip, err = ipUtils.ParseIpv6(addr)
+		if err != nil {
+			return IndexResponse{
+				Error: err.Error(),
+				IsValid: false,
+			}
+		}
+	} else { // IPv4
+		ip, err = ipUtils.ParseIpv4(addr)
+		if err != nil {
+			return IndexResponse{
+				Error: err.Error(),
+				IsValid: false,
+			}
 		}
 	}
 
@@ -55,7 +68,7 @@ func getIpInfo(addr string) IndexResponse {
 		IsValid: true,
 		IsCidr: ip.IsCidrFormatted(),
 		BinAddr: ip.PrintBinary(),
-		Prefix: ip[4],
+		Prefix: ip.GetPrefix(),
 		Netmask: ip.PrintNetmask(),
 		Network: ip.PrintNetworkAddress(),
 	}
