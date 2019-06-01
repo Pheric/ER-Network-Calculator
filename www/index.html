@@ -8,7 +8,7 @@
 <body style="font-family: monospace">
     {{ template "header.html" }}
 
-    {{ if .CAddr }}
+    {{ if not .Error }}
         <p>Address: {{ .CAddr.Print }}</p>
         <p>Binary: {{ .BinAddr }}</p>
         {{ if .IsCidr }}
@@ -16,7 +16,7 @@
             <p>Network Address: {{ .Network }}</p>
         {{ end }}
         {{ with .CAddr.GetType }}
-            <p>
+            <p>Type:
                 {{ if eq . 8 }}
                     Loopback
                 {{ else if eq . 9 }}

@@ -32,18 +32,24 @@ func ParseIpv4(str string) (addr Ipv4Addr, err error) {
 
 	// Regex didn't work when I tried to compress it.. so I guess we get to use the expanded version. Written by hand
 	ipv4WithCidrRegex := regexp.MustCompile(`(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(?:\/([1-3]?\d))?`)
-	matches := ipv4WithCidrRegex.FindAllStringSubmatch(str, -1)[0][1:]
-	if l := len(matches); l == 0 || l > 5 || l < 4 {
-		return addr, fmt.Errorf("invalid format by regex")
+	m := ipv4WithCidrRegex.FindAllStringSubmatch(str, -1)
+	if m == nil {
+		return addr, fmt.Errorf("malformed address")
 	}
-	if len(matches) == 4 {
-		matches = append(matches, "-1")
+
+	matches := m[0]
+	if l := len(matches); l < 5 || l > 6 {
+		return addr, fmt.Errorf("invalid address by regex")
+	}
+	matches = matches[1:]
+	if matches[4] == "" {
+		matches[4] = "-1"
 	}
 
 	for i, octet := range matches {
 		parsed, err := strconv.Atoi(octet)
 		if err != nil {
-			return addr, fmt.Errorf("octet #%d is NaN", i)
+			return addr, fmt.Errorf("octet #%d is NaN: %s", i + 1, octet)
 		}
 
 		addr[i] = parsed
@@ -64,6 +70,8 @@ func (ip Ipv4Addr) PrintBinary() (s string) {
 			s += "."
 		} else if i == 3 && ip.IsCidrFormatted() {
 			s += "/"
+		} else {
+			break
 		}
 	}
 
@@ -110,7 +118,7 @@ func (ip Ipv4Addr) GetType() int {
 		return MULTICAST
 	} else if ip[3] == 255 {
 		return BROADCAST
-	} else if ip[3] == 0 { // TODO: support subnetting
+	} else if ip.Print() == ip.PrintNetworkAddress() {
 		return NETWORK
 	} else {
 		return UNICAST
@@ -147,6 +155,7 @@ func (ip Ipv4Addr) PrintNetworkAddress() (s string) {
 			s += "."
 		}
 	}
+	s += fmt.Sprintf("/%d", ip[4])
 
 	return s
 }
