@@ -5,7 +5,7 @@
     <link rel="stylesheet" type="text/css" href="/stylesheets/header.css" />
     <title>ER Network Calculator</title>
 </head>
-<body>
+<body style="font-family: monospace">
     {{ template "header.html" }}
 
     {{ if .Addr }}
@@ -16,6 +16,24 @@
         {{ if .IsCidr }}
             <p>Subnet mask: {{ .Netmask }}</p>
             <p>Network Address: {{ .Network.String }}</p>
+        {{ else }}
+            {{ with .CAddr.GetType }}
+                <p>
+                    {{ if eq . 8 }}
+                        Loopback
+                    {{ else if eq . 9 }}
+                        APIPA
+                    {{ else if eq . 10 }}
+                        Broadcast
+                    {{ else if eq . 11 }}
+                        Multicast
+                    {{ else if eq . 12 }}
+                        Network
+                    {{ else }}
+                        Unicast
+                    {{ end }}
+                </p>
+            {{ end }}
         {{ end }}
     {{ else }}
         <p>Invalid IP address!</p>
