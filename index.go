@@ -8,11 +8,12 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"ER-Network-Calculator/ipUtils"
 )
 
 type IndexResponse struct {
 	Addr    net.IP
-	CAddr   Ipv4Addr
+	CAddr   ipUtils.Ipv4Addr
 	BinAddr string
 	Network *net.IPNet
 	Prefix  int
@@ -78,7 +79,7 @@ func getIpInfo(addr string) IndexResponse {
 	isV6 := !strings.Contains(ip.String(), ".")
 
 	binAddr := ""
-	ip_, err := ParseIpv4(addr)
+	ip_, err := ipUtils.ParseIpv4(addr)
 	if !isV6 && err == nil {
 		binAddr = ip_.PrintBinary()
 	}
