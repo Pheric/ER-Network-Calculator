@@ -35,21 +35,22 @@ func ParseIpv6(str string) (addr Ipv6Addr, err error) {
 
 	spl := strings.Split(split[0], ":")
 
-	// Test:
-	// 0    1   2 3 4 5    6    7 [i]
-	// 2001:0db8::    ff00:0042:8329
 	i := 0
+	ellipsis := false
 	for si, hextet := range spl { // Don't you quibble with me!
-		//fmt.Printf("i: %d\tsi: %d\thextet: `%s`\tellipsis detected: %v\n", i, si, hextet, hextet == "")
 		if hextet == "" {
-			//fmt.Printf("ellipsis detected. position: %d\tloop until: %d\n", i, i+(8-len(spl)))
 			// Position of "ellipsis" (this is what Go's net package calls the :: as far as I can tell)
+			if ellipsis {
+				// Try and get around weird behavior with "::1"
+				i++
+				continue
+			}
+			ellipsis = true
+
 			for j := i; j < i + (8 - len(spl) + 1); j++ {
-				//fmt.Printf("\tj: %d\n", j)
 				addr[j] = 0
 			}
 			i += 8 - len(spl) + 1
-			//fmt.Printf("i -> %d\tsi: %d\taddr: `%v`\n", i, si, addr)
 			continue
 		}
 
@@ -62,15 +63,40 @@ func ParseIpv6(str string) (addr Ipv6Addr, err error) {
 		i++
 	}
 
-	// TODO
 	return addr, err
 }
 
 func (ip Ipv6Addr) PrintBinary() (s string) {
+	for i, hextet := range ip {
+		formatted := strconv.FormatInt(int64(hextet), 2)
+		for ; 8-len(formatted) > 0; {
+			formatted = "0" + formatted
+		}
+		s += formatted
+		if i < 7 {
+			s += ":"
+		} else if i == 7 && ip.IsCidrFormatted() {
+			s += "/"
+		} else {
+			break
+		}
+	}
+
 	return s
 }
 
 func (ip Ipv6Addr) Print() (s string) {
+	for i, hextet := range ip {
+		s += strconv.FormatInt(int64(hextet), 16)
+		if i < 7 {
+			s += ":"
+		} else if i == 7 && ip.IsCidrFormatted() {
+			s += "/"
+		} else {
+			break
+		}
+	}
+
 	return s
 }
 
@@ -90,12 +116,27 @@ func (ip Ipv6Addr) GetType() int {
 	return 0
 }
 
+// See IPv4's implementation
 func (ip Ipv6Addr) GetNetmask() (ret [4]int) {
-	return [4]int{0, 0, 0, 0}
+	if !ip.IsCidrFormatted() {
+		return ret
+	}
+
+	prefix := ip[8]
+	for i := 0; i < 4; i++ {
+		j := 255
+		for ; j > 0 && prefix > 0; j >>= 1 {
+			prefix--
+		}
+		ret[i] = 255 - j
+	}
+	return ret
 }
 
+// See IPv4's implementation
 func (ip Ipv6Addr) PrintNetmask() (s string) {
-	return s
+	netmask := ip.GetNetmask()
+	return fmt.Sprintf("%d.%d.%d.%d", netmask[0], netmask[1], netmask[2], netmask[3])
 }
 
 func (ip Ipv6Addr) PrintNetworkAddress() (s string) {
