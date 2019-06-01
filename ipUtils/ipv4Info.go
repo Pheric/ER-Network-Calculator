@@ -2,12 +2,11 @@ package ipUtils
 
 import (
 	"fmt"
-	"net"
+	"regexp"
 	"strconv"
-	"strings"
 )
 
-type Ipv4Addr [4]int
+type Ipv4Addr [5]int
 const (
 	NOT_CLASSFUL = iota
 	CLASS_A
@@ -25,18 +24,23 @@ const (
 	UNICAST
 )
 
-// Parses an IPv4 address out of a string. Must not be in CIDR notation, have any protocol, or have a port.
+// Parses an IPv4 address out of a string. Must not have any protocol or port.
 func ParseIpv4(str string) (addr Ipv4Addr, err error) {
 	if str == "" {
 		return addr, fmt.Errorf("input string is empty")
 	}
 
-	if net.ParseIP(str) == nil {
-		return addr, fmt.Errorf("ip format is invalid")
+	// Regex didn't work when I tried to compress it.. so I guess we get to use the expanded version. Written by hand
+	ipv4WithCidrRegex := regexp.MustCompile(`(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(?:\/([1-3]?\d))?`)
+	matches := ipv4WithCidrRegex.FindAllStringSubmatch(str, -1)[0][1:]
+	if l := len(matches); l == 0 || l > 5 || l < 4 {
+		return addr, fmt.Errorf("invalid format by regex")
+	}
+	if len(matches) == 4 {
+		matches = append(matches, "-1")
 	}
 
-	split := strings.Split(str, ".")
-	for i, octet := range split {
+	for i, octet := range matches {
 		parsed, err := strconv.Atoi(octet)
 		if err != nil {
 			return addr, fmt.Errorf("octet #%d is NaN", i)
@@ -58,20 +62,37 @@ func (ip Ipv4Addr) PrintBinary() (s string) {
 		s += formatted
 		if i < 3 {
 			s += "."
+		} else if i == 3 && ip.IsCidrFormatted() {
+			s += "/"
 		}
 	}
 
 	return s
 }
 
-// If the address is a normal private IP address, this will return its network's class
-// For example, the address '192.168.1.1' is a class B; '240.23.18.1' is a class E
+// Returns the ip address
+func (ip Ipv4Addr) Print() (s string) {
+	s = fmt.Sprintf("%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3])
+	if ip.IsCidrFormatted() {
+		s += fmt.Sprintf("/%d", ip[4])
+	}
+
+	return s
+}
+
+func (ip Ipv4Addr) IsCidrFormatted() bool {
+	return ip[4] != -1
+}
+
+// If there's no prefix and the address is a normal private IP address, this will return its network's class
+// Otherwise, it prefers the prefix.
+// For example, the address '112.17.100.45/16' is a class B; '240.23.18.1' is a class E
 func (ip Ipv4Addr) GetPrivateClass() int {
-	if ip[0] == 10 || ip[0] == 127 {
+	if ip[0] == 10 || ip[0] == 127 || (ip.IsCidrFormatted() && ip[4] == 8 && !(ip[0] >= 240)) {
 		return CLASS_A
-	} else if ip[0] == 172 && (ip[1] >= 16 && ip[1] <= 31) {
+	} else if ip[0] == 172 && (ip[1] >= 16 && ip[1] <= 31) || (ip.IsCidrFormatted() && ip[4] == 16) {
 		return CLASS_B
-	} else if ip[0] == 192 && ip[1] == 168 {
+	} else if ip[0] == 192 && ip[1] == 168 || (ip.IsCidrFormatted() && ip[4] == 24) {
 		return CLASS_C
 	} else if ip[0] >= 240 {
 		return CLASS_E

@@ -6,8 +6,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"strconv"
-	"strings"
 	"ER-Network-Calculator/ipUtils"
 )
 
@@ -21,6 +19,7 @@ type IndexResponse struct {
 	IsValid bool
 	IsCidr  bool
 	IsIpv6  bool
+	Error string
 }
 
 func serveIndex(w http.ResponseWriter, r *http.Request) {
@@ -45,50 +44,19 @@ func getIpInfo(addr string) IndexResponse {
 		return IndexResponse{}
 	}
 
-	ip, ipNet, err := net.ParseCIDR(addr)
-	if err == nil {
-		var netmask string
-		for i, octet := range ipNet.Mask {
-			netmask += strconv.FormatInt(int64(octet), 10)
-
-			if i < len(ipNet.Mask)-1 {
-				netmask += "."
-			}
-		}
-
-		isV6 := !strings.Contains(ip.String(), ".")
-		binAddr := ""
+	ip, err := ipUtils.ParseIpv4(addr)
+	if err != nil {
 		return IndexResponse{
-			Addr:    ip,
-			BinAddr: binAddr,
-			Network: ipNet,
-			Netmask: netmask,
-			IsValid: true,
-			IsCidr:  true,
-			IsIpv6:  isV6,
-		}
-	}
-
-	ip = net.ParseIP(addr)
-	if ip == nil {
-		return IndexResponse{
+			Error: err.Error(),
 			IsValid: false,
 		}
 	}
 
-	isV6 := !strings.Contains(ip.String(), ".")
-
-	binAddr := ""
-	ip_, err := ipUtils.ParseIpv4(addr)
-	if !isV6 && err == nil {
-		binAddr = ip_.PrintBinary()
-	}
 	return IndexResponse{
-		Addr:    ip,
-		CAddr:   ip_,
-		BinAddr: binAddr,
+		CAddr: ip,
 		IsValid: true,
-		IsCidr:  false,
-		IsIpv6:  isV6,
+		IsCidr: ip.IsCidrFormatted(),
+		BinAddr: ip.PrintBinary(),
+		Prefix: ip[4],
 	}
 }

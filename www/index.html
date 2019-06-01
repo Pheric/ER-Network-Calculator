@@ -8,35 +8,30 @@
 <body style="font-family: monospace">
     {{ template "header.html" }}
 
-    {{ if .Addr }}
-        <p>Address: {{ .Addr.String }}</p>
+    {{ if .CAddr }}
+        <p>Address: {{ .CAddr.Print }}</p>
         {{ if .BinAddr }}
             <p>Binary: {{ .BinAddr }}</p>
         {{ end }}
-        {{ if .IsCidr }}
-            <p>Subnet mask: {{ .Netmask }}</p>
-            <p>Network Address: {{ .Network.String }}</p>
-        {{ else }}
-            {{ with .CAddr.GetType }}
-                <p>
-                    {{ if eq . 8 }}
-                        Loopback
-                    {{ else if eq . 9 }}
-                        APIPA
-                    {{ else if eq . 10 }}
-                        Broadcast
-                    {{ else if eq . 11 }}
-                        Multicast
-                    {{ else if eq . 12 }}
-                        Network
-                    {{ else }}
-                        Unicast
-                    {{ end }}
-                </p>
-            {{ end }}
+        {{ with .CAddr.GetType }}
+            <p>
+                {{ if eq . 8 }}
+                    Loopback
+                {{ else if eq . 9 }}
+                    APIPA
+                {{ else if eq . 10 }}
+                    Broadcast
+                {{ else if eq . 11 }}
+                    Multicast
+                {{ else if eq . 12 }}
+                    Network
+                {{ else }}
+                    Unicast
+                {{ end }}
+            </p>
         {{ end }}
     {{ else }}
-        <p>Invalid IP address!</p>
+        <p>Invalid IP address ({{ .Error }})</p>
     {{ end }}
     <form action="/" method="get">
         <input name="addr" type="text">
