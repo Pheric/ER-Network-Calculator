@@ -117,6 +117,40 @@ func (ip Ipv4Addr) GetType() int {
 	}
 }
 
+func (ip Ipv4Addr) GetNetmask() (ret [4]int) {
+	if !ip.IsCidrFormatted() {
+		return ret
+	}
+
+	prefix := ip[4]
+	for i := 0; i < 4; i++ {
+		j := 255
+		for ; j > 0 && prefix > 0; j >>= 1 {
+			prefix--
+		}
+		ret[i] = 255 - j
+	}
+	return ret
+}
+
+func (ip Ipv4Addr) PrintNetmask() (s string) {
+	netmask := ip.GetNetmask()
+	return fmt.Sprintf("%d.%d.%d.%d", netmask[0], netmask[1], netmask[2], netmask[3])
+}
+
+func (ip Ipv4Addr) PrintNetworkAddress() (s string) {
+	netmask := ip.GetNetmask()
+
+	for i := 0; i < 4; i++ {
+		s += strconv.Itoa(ip[i] & netmask[i])
+		if i < 3 {
+			s += "."
+		}
+	}
+
+	return s
+}
+
 // Describes the IP address as best it can:
 // - Public / private
 // - Class if private

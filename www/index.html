@@ -10,8 +10,10 @@
 
     {{ if .CAddr }}
         <p>Address: {{ .CAddr.Print }}</p>
-        {{ if .BinAddr }}
-            <p>Binary: {{ .BinAddr }}</p>
+        <p>Binary: {{ .BinAddr }}</p>
+        {{ if .IsCidr }}
+            <p>Subnet mask: {{ .Netmask }}</p>
+            <p>Network Address: {{ .Network }}</p>
         {{ end }}
         {{ with .CAddr.GetType }}
             <p>

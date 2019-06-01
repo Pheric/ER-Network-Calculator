@@ -1,19 +1,17 @@
 package main
 
 import (
+	"ER-Network-Calculator/ipUtils"
 	"fmt"
 	"html/template"
 	"log"
-	"net"
 	"net/http"
-	"ER-Network-Calculator/ipUtils"
 )
 
 type IndexResponse struct {
-	Addr    net.IP
 	CAddr   ipUtils.Ipv4Addr
 	BinAddr string
-	Network *net.IPNet
+	Network string
 	Prefix  int
 	Netmask string
 	IsValid bool
@@ -58,5 +56,7 @@ func getIpInfo(addr string) IndexResponse {
 		IsCidr: ip.IsCidrFormatted(),
 		BinAddr: ip.PrintBinary(),
 		Prefix: ip[4],
+		Netmask: ip.PrintNetmask(),
+		Network: ip.PrintNetworkAddress(),
 	}
 }
