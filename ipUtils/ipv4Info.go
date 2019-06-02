@@ -7,6 +7,7 @@ import (
 )
 
 type Ipv4Addr [5]int
+
 const (
 	NOT_CLASSFUL = iota
 	CLASS_A
@@ -49,7 +50,7 @@ func ParseIpv4(str string) (addr Ipv4Addr, err error) {
 	for i, octet := range matches {
 		parsed, err := strconv.Atoi(octet)
 		if err != nil {
-			return addr, fmt.Errorf("octet #%d is NaN: %s", i + 1, octet)
+			return addr, fmt.Errorf("octet #%d is NaN: %s", i+1, octet)
 		}
 
 		addr[i] = parsed

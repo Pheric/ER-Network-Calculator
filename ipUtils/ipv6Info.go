@@ -47,7 +47,7 @@ func ParseIpv6(str string) (addr Ipv6Addr, err error) {
 			}
 			ellipsis = true
 
-			for j := i; j < i + (8 - len(spl) + 1); j++ {
+			for j := i; j < i+(8-len(spl)+1); j++ {
 				addr[j] = 0
 			}
 			i += 8 - len(spl) + 1
@@ -56,7 +56,7 @@ func ParseIpv6(str string) (addr Ipv6Addr, err error) {
 
 		parsed, err := strconv.ParseInt(hextet, 16, 64)
 		if err != nil {
-			return addr, fmt.Errorf("hextet #%d is NaN: %s", si + 1, hextet)
+			return addr, fmt.Errorf("hextet #%d is NaN: %s", si+1, hextet)
 		}
 
 		addr[i] = int(parsed)
@@ -69,7 +69,7 @@ func ParseIpv6(str string) (addr Ipv6Addr, err error) {
 func (ip Ipv6Addr) PrintBinary() (s string) {
 	for i, hextet := range ip {
 		formatted := strconv.FormatInt(int64(hextet), 2)
-		for ; 8-len(formatted) > 0; {
+		for ; 16-len(formatted) > 0; {
 			formatted = "0" + formatted
 		}
 		s += formatted
@@ -86,7 +86,7 @@ func (ip Ipv6Addr) PrintBinary() (s string) {
 }
 
 func (ip Ipv6Addr) Print() (s string) {
-	for i, hextet := range ip {
+	for i, hextet := range ip[:8] {
 		s += strconv.FormatInt(int64(hextet), 16)
 		if i < 7 {
 			s += ":"
@@ -96,6 +96,7 @@ func (ip Ipv6Addr) Print() (s string) {
 			break
 		}
 	}
+	s += strconv.Itoa(ip[8])
 
 	return s
 }
@@ -117,28 +118,37 @@ func (ip Ipv6Addr) GetType() int {
 }
 
 // See IPv4's implementation
-func (ip Ipv6Addr) GetNetmask() (ret [4]int) {
+// This is just a helper for IPv6, since it doesn't actually have a subnet mask like IPv4 does
+func (ip Ipv6Addr) getNetmask() (ret [8]int) {
 	if !ip.IsCidrFormatted() {
 		return ret
 	}
 
 	prefix := ip[8]
-	for i := 0; i < 4; i++ {
-		j := 255
+	for i := 0; i < 8; i++ {
+		j := 0xFFFF
 		for ; j > 0 && prefix > 0; j >>= 1 {
 			prefix--
 		}
-		ret[i] = 255 - j
+		ret[i] = 0xFFFF - j
 	}
 	return ret
 }
 
-// See IPv4's implementation
-func (ip Ipv6Addr) PrintNetmask() (s string) {
-	netmask := ip.GetNetmask()
-	return fmt.Sprintf("%d.%d.%d.%d", netmask[0], netmask[1], netmask[2], netmask[3])
-}
-
 func (ip Ipv6Addr) PrintNetworkAddress() (s string) {
+	netmask := ip.getNetmask()
+	fmt.Println(netmask)
+
+	for i := 0; i < 8; i++ {
+		s += strconv.FormatInt(int64(netmask[i]&ip[i]), 16)
+
+		if i < 7 {
+			s += ":"
+		} else if i == 7 && ip.IsCidrFormatted() {
+			s += "/"
+		}
+	}
+	s += strconv.Itoa(ip[8])
+
 	return s
 }

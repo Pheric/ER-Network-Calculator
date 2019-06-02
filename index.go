@@ -14,11 +14,10 @@ type IndexResponse struct {
 	BinAddr string
 	Network string
 	Prefix  int
-	Netmask string
 	IsValid bool
 	IsCidr  bool
 	IsIpv6  bool
-	Error string
+	Error   string
 }
 
 func serveIndex(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +48,7 @@ func getIpInfo(addr string) IndexResponse {
 		ip, err = ipUtils.ParseIpv6(addr)
 		if err != nil {
 			return IndexResponse{
-				Error: err.Error(),
+				Error:   err.Error(),
 				IsValid: false,
 			}
 		}
@@ -57,19 +56,18 @@ func getIpInfo(addr string) IndexResponse {
 		ip, err = ipUtils.ParseIpv4(addr)
 		if err != nil {
 			return IndexResponse{
-				Error: err.Error(),
+				Error:   err.Error(),
 				IsValid: false,
 			}
 		}
 	}
 
 	return IndexResponse{
-		CAddr: ip,
+		CAddr:   ip,
 		IsValid: true,
-		IsCidr: ip.IsCidrFormatted(),
+		IsCidr:  ip.IsCidrFormatted(),
 		BinAddr: ip.PrintBinary(),
-		Prefix: ip.GetPrefix(),
-		Netmask: ip.PrintNetmask(),
+		Prefix:  ip.GetPrefix(),
 		Network: ip.PrintNetworkAddress(),
 	}
 }

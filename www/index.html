@@ -2,42 +2,41 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" type="text/css" href="/stylesheets/header.css" />
+    <link rel="stylesheet" type="text/css" href="/stylesheets/header.css"/>
     <title>ER Network Calculator</title>
 </head>
 <body style="font-family: monospace">
-    {{ template "header.html" }}
+{{ template "header.html" }}
 
-    {{ if not .Error }}
-        <p>Address: {{ .CAddr.Print }}</p>
-        <p>Binary: {{ .BinAddr }}</p>
-        {{ if .IsCidr }}
-            <p>Subnet mask: {{ .Netmask }}</p>
-            <p>Network Address: {{ .Network }}</p>
-        {{ end }}
-        {{ with .CAddr.GetType }}
-            <p>Type:
-                {{ if eq . 8 }}
-                    Loopback
-                {{ else if eq . 9 }}
-                    APIPA
-                {{ else if eq . 10 }}
-                    Broadcast
-                {{ else if eq . 11 }}
-                    Multicast
-                {{ else if eq . 12 }}
-                    Network
-                {{ else }}
-                    Unicast
-                {{ end }}
-            </p>
-        {{ end }}
-    {{ else }}
-        <p>Invalid IP address ({{ .Error }})</p>
+{{ if not .Error }}
+    <p>Address: {{ .CAddr.Print }}</p>
+    <p>Binary: {{ .BinAddr }}</p>
+    {{ if .IsCidr }}
+        <p>Network Address: {{ .Network }}</p>
     {{ end }}
-    <form action="/" method="get">
-        <input name="addr" type="text">
-        <input type="submit">
-    </form>
+    {{ with .CAddr.GetType }}
+        <p>Type:
+            {{ if eq . 8 }}
+                Loopback
+            {{ else if eq . 9 }}
+                APIPA
+            {{ else if eq . 10 }}
+                Broadcast
+            {{ else if eq . 11 }}
+                Multicast
+            {{ else if eq . 12 }}
+                Network
+            {{ else }}
+                Unicast
+            {{ end }}
+        </p>
+    {{ end }}
+{{ else }}
+    <p>Invalid IP address ({{ .Error }})</p>
+{{ end }}
+<form action="/" method="get">
+    <input name="addr" type="text">
+    <input type="submit">
+</form>
 </body>
 </html>

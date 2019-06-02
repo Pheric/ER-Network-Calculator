@@ -8,6 +8,7 @@ import (
 )
 
 var port int
+
 func main() {
 	setupClFlags()
 

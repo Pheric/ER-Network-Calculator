@@ -7,7 +7,5 @@ type IpAddr interface {
 	GetPrefix() int
 	GetPrivateClass() int
 	GetType() int
-	GetNetmask() (ret [4]int)
-	PrintNetmask() (s string)
 	PrintNetworkAddress() (s string)
 }
