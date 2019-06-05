@@ -109,22 +109,57 @@ func (ip Ipv6Addr) GetPrefix() int {
 	return ip[8]
 }
 
-func (ip Ipv6Addr) GetPrivateClass() int {
+func (ip Ipv6Addr) GetClass() int {
 	return 0
 }
 
 func (ip Ipv6Addr) GetType() int {
-	return 0
+	if ip[0] == 0 && ip[1] == 0 && ip[2] == 0 && ip[3] == 0 && ip[4] == 0 && ip[5] == 0 && ip[6] == 0 {
+		if ip[7] == 1 {
+			return LOOPBACK
+		} else if ip[7] == 0 {
+			return UNSPECIFIED_UNICAST
+		}
+	} else if ip.isOfType(0xFE80, 10) {
+		return LINK_LOCAL_UNICAST
+	} else if ip.isOfType(0xFC00, 7) {
+		return UNIQUE_LOCAL_UNICAST
+	} else if ip.isOfType(0, 80) {
+		return EMBEDDED_IPV4
+	} else if ip.isOfType(0xFF00, 12) {
+		return WELL_KNOWN_MULTICAST
+	} else if ip.isOfType(0xFF10, 12) {
+		return TRANSIENT_MULTICAST
+	} else if ip.isOfType(0x2000, 3) {
+		return UNICAST
+	}// TODO Solicited-Node multicast (FF02:0:0:0:0:1:FF00::/104
+	return -1
+}
+
+// Takes a hextet and a prefix and returns true if the IP address is of that type
+// For example: [2001:db8::ff00:42:8329].isOfType(0x2000, 3) -> true
+// See for usage: https://ptgmedia.pearsoncmg.com/images/chap4_9781587144776/elementLinks/04fig06_alt.jpg
+func (ip Ipv6Addr) isOfType(mask int, prefix int) bool {
+	m := ip.getMask(prefix)
+	ok := true
+
+	for i := 0; ok && i < 8; i++ {
+		if m[i] & ip[i] != m[i] & mask {
+			ok = false
+		}
+		fmt.Printf("%b & %b (%b) == %b & %b (%b): %v\n", m[i], ip[i], m[i] & ip[i], m[i], mask, m[i] & mask, m[i] & ip[i] == m[i] & mask)
+	}
+
+	return ok
 }
 
 // See IPv4's implementation
 // This is just a helper for IPv6, since it doesn't actually have a subnet mask like IPv4 does
-func (ip Ipv6Addr) getNetmask() (ret [8]int) {
+func (ip Ipv6Addr) getMask(prefix int) (ret [8]int) {
 	if !ip.IsCidrFormatted() {
 		return ret
 	}
 
-	prefix := ip[8]
 	for i := 0; i < 8; i++ {
 		j := 0xFFFF
 		for ; j > 0 && prefix > 0; j >>= 1 {
@@ -136,8 +171,7 @@ func (ip Ipv6Addr) getNetmask() (ret [8]int) {
 }
 
 func (ip Ipv6Addr) PrintNetworkAddress() (s string) {
-	netmask := ip.getNetmask()
-	fmt.Println(netmask)
+	netmask := ip.getMask(ip[8])
 
 	for i := 0; i < 8; i++ {
 		s += strconv.FormatInt(int64(netmask[i]&ip[i]), 16)

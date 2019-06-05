@@ -8,23 +8,6 @@ import (
 
 type Ipv4Addr [5]int
 
-const (
-	NOT_CLASSFUL = iota
-	CLASS_A
-	CLASS_B
-	CLASS_C
-	CLASS_E
-	PUBLIC
-	PRIVATE
-	SPECIAL
-	LOOPBACK
-	APIPA
-	BROADCAST
-	MULTICAST
-	NETWORK
-	UNICAST
-)
-
 // Parses an IPv4 address out of a string. Must not have any protocol or port.
 func ParseIpv4(str string) (addr Ipv4Addr, err error) {
 	if str == "" {
@@ -100,7 +83,7 @@ func (ip Ipv4Addr) GetPrefix() int {
 // If there's no prefix and the address is a normal private IP address, this will return its network's class
 // Otherwise, it prefers the prefix.
 // For example, the address '112.17.100.45/16' is a class B; '240.23.18.1' is a class E
-func (ip Ipv4Addr) GetPrivateClass() int {
+func (ip Ipv4Addr) GetClass() int {
 	if ip[0] == 10 || ip[0] == 127 || (ip.IsCidrFormatted() && ip[4] == 8 && !(ip[0] >= 240)) {
 		return CLASS_A
 	} else if ip[0] == 172 && (ip[1] >= 16 && ip[1] <= 31) || (ip.IsCidrFormatted() && ip[4] == 16) {
@@ -170,7 +153,7 @@ func (ip Ipv4Addr) PrintNetworkAddress() (s string) {
 // - Class if private
 // - Type (APIPA / loopback / multicast / broadcast / unicast / network)
 func (ip Ipv4Addr) Describe() (ret []int) {
-	class := ip.GetPrivateClass()
+	class := ip.GetClass()
 	ret = append(ret, class)
 
 	if class != NOT_CLASSFUL {
@@ -186,11 +169,11 @@ func (ip Ipv4Addr) Describe() (ret []int) {
 
 // TODO
 /*// Returns 'true' if the IP address is special, meaning:
-// - it is a normal private IP (see GetPrivateClass())
+// - it is a normal private IP (see GetClass())
 // - it is reserved or commonly used in a special way according to Wikipedia's IPv4#Addressing section
 func (ip Ipv4Addr) isSpecial() bool {
 	// See https://en.wikipedia.org/wiki/IPv4#Addressing
-	return ip.GetPrivateClass() != NOT_CLASSFUL &&
+	return ip.GetClass() != NOT_CLASSFUL &&
 		!(ip[0] == 100 && (ip[1] >= 64 && ip[1] <= 127)) && // "Shared address space for communications between a service provider and its subscribers when using a carrier-grade NAT."
 		!(ip[0] == 192 && ip[1] == 0 && ip[2] == 0) && // "IETF Protocol Assignments."
 		!(ip[0] == 198 && (ip[1] == 18 || ip[1] == 19)) // "Used for benchmark testing of inter-network communications between two separate subnets."

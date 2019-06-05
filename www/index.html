@@ -8,31 +8,45 @@
 <body style="font-family: monospace">
 {{ template "header.html" }}
 
-{{ if not .Error }}
-    <p>Address: {{ .CAddr.Print }}</p>
-    <p>Binary: {{ .BinAddr }}</p>
-    {{ if .IsCidr }}
-        <p>Network Address: {{ .Network }}</p>
+{{ if .CAddr }}
+    {{ if not .Error }}
+        <p>Address: {{ .CAddr.Print }}</p>
+        <p>Binary: {{ .BinAddr }}</p>
+        {{ if .IsCidr }}
+            <p>Network Address: {{ .Network }}</p>
+        {{ end }}
+        {{ with .CAddr.GetType }}
+            <p>Type:
+                {{ if eq . 8 }}
+                    Loopback
+                {{ else if eq . 9 }}
+                    APIPA
+                {{ else if eq . 10 }}
+                    Broadcast
+                {{ else if eq . 11 }}
+                    Multicast
+                {{ else if eq . 12 }}
+                    Network
+                {{ else if eq . 14 }}
+                    Link-local unicast
+                {{ else if eq . 15 }}
+                    Unique local unicast
+                {{ else if eq . 16 }}
+                    Unspecified (unicast)
+                {{ else if eq . 17 }}
+                    Embedded IPv4
+                {{ else if eq . 18 }}
+                    Well-known multicast
+                {{ else if eq . 19 }}
+                    Transient multicast
+                {{ else }}{{/* 13 */}}
+                    Unicast
+                {{ end }}
+            </p>
+        {{ end }}
+    {{ else }}
+        <p>Invalid IP address ({{ .Error }})</p>
     {{ end }}
-    {{ with .CAddr.GetType }}
-        <p>Type:
-            {{ if eq . 8 }}
-                Loopback
-            {{ else if eq . 9 }}
-                APIPA
-            {{ else if eq . 10 }}
-                Broadcast
-            {{ else if eq . 11 }}
-                Multicast
-            {{ else if eq . 12 }}
-                Network
-            {{ else }}
-                Unicast
-            {{ end }}
-        </p>
-    {{ end }}
-{{ else }}
-    <p>Invalid IP address ({{ .Error }})</p>
 {{ end }}
 <form action="/" method="get">
     <input name="addr" type="text">
