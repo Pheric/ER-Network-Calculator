@@ -7,3 +7,8 @@
     font-family: sans-serif;
     text-align: center;
 }
+
+body {
+    background: url("/assets/bg.jpg") no-repeat;
+    background-size: cover;
+}

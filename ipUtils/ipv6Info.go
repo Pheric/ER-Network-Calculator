@@ -147,7 +147,6 @@ func (ip Ipv6Addr) isOfType(mask int, prefix int) bool {
 		if m[i] & ip[i] != m[i] & mask {
 			ok = false
 		}
-		fmt.Printf("%b & %b (%b) == %b & %b (%b): %v\n", m[i], ip[i], m[i] & ip[i], m[i], mask, m[i] & mask, m[i] & ip[i] == m[i] & mask)
 	}
 
 	return ok
