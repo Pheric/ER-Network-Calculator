@@ -2,6 +2,7 @@ package ipUtils
 
 import (
 	"fmt"
+	"math"
 	"net"
 	"strconv"
 	"strings"
@@ -67,18 +68,12 @@ func ParseIpv6(str string) (addr Ipv6Addr, err error) {
 }
 
 func (ip Ipv6Addr) PrintBinary() (s string) {
-	for i, hextet := range ip {
-		formatted := strconv.FormatInt(int64(hextet), 2)
-		for ; 16-len(formatted) > 0; {
-			formatted = "0" + formatted
-		}
-		s += formatted
+	for i, hextet := range ip[:8] {
+		s += fmt.Sprintf("%016b", hextet)
 		if i < 7 {
 			s += ":"
 		} else if i == 7 && ip.IsCidrFormatted() {
-			s += "/"
-		} else {
-			break
+			s += fmt.Sprintf("/%08b", ip.GetPrefix())
 		}
 	}
 
@@ -109,8 +104,9 @@ func (ip Ipv6Addr) GetPrefix() int {
 	return ip[8]
 }
 
+// IPv6 doesn't use classes
 func (ip Ipv6Addr) GetClass() int {
-	return 0
+	return NOT_CLASSFUL
 }
 
 func (ip Ipv6Addr) GetType() int {
@@ -140,7 +136,7 @@ func (ip Ipv6Addr) GetType() int {
 // For example: [2001:db8::ff00:42:8329].isOfType(0x2000, 3) -> true
 // See for usage: https://ptgmedia.pearsoncmg.com/images/chap4_9781587144776/elementLinks/04fig06_alt.jpg
 func (ip Ipv6Addr) isOfType(mask int, prefix int) bool {
-	m := ip.getMask(prefix)
+	m := getMask(prefix)
 	ok := true
 
 	for i := 0; ok && i < 8; i++ {
@@ -152,25 +148,8 @@ func (ip Ipv6Addr) isOfType(mask int, prefix int) bool {
 	return ok
 }
 
-// See IPv4's implementation
-// This is just a helper for IPv6, since it doesn't actually have a subnet mask like IPv4 does
-func (ip Ipv6Addr) getMask(prefix int) (ret [8]int) {
-	if !ip.IsCidrFormatted() {
-		return ret
-	}
-
-	for i := 0; i < 8; i++ {
-		j := 0xFFFF
-		for ; j > 0 && prefix > 0; j >>= 1 {
-			prefix--
-		}
-		ret[i] = 0xFFFF - j
-	}
-	return ret
-}
-
 func (ip Ipv6Addr) PrintNetworkAddress() (s string) {
-	netmask := ip.getMask(ip[8])
+	netmask := getMask(ip[8])
 
 	for i := 0; i < 8; i++ {
 		s += strconv.FormatInt(int64(netmask[i]&ip[i]), 16)
@@ -184,4 +163,91 @@ func (ip Ipv6Addr) PrintNetworkAddress() (s string) {
 	s += strconv.Itoa(ip[8])
 
 	return s
+}
+
+// WIP function that auto-subnets an IPv6 address
+// @param `nets`: number of desired subnets. Must be <= 65536
+// Returns the resultant list of subnets or an error
+func (ip Ipv6Addr) Subnet(nets uint) ([]IpAddr, error) {
+	// f(x) gets the number of bits required to represent x
+	f := func(x uint) float64 {
+		return math.Ceil(math.Log(float64(x)) / math.Log(2)) // change of base formula for log base 2 of x. Go uses Log() as *natural* log (why?!)
+	}
+
+	// smask(x) gets a mask of length x
+	smask := func(x int) int {
+		return int(math.Pow(2, float64(x))) - 1
+	}
+
+	nbits := int(f(nets))
+
+	if !ip.IsCidrFormatted() {
+		return nil, fmt.Errorf("address has no indicated network")
+	} else if nbits > 16 {
+		return nil, fmt.Errorf("requiring over 16 bits is not supported")
+	} else if ip.GetPrefix() + nbits > 64 {
+		return nil, fmt.Errorf("network is too small to subnet properly")
+	}
+
+	// Convert to a network address //
+	mask := getMask(ip.GetPrefix())
+	for i := 0; i < 8; i++ {
+		ip[i] = ip[i] & mask[i]
+	}
+
+	// Subnet //
+
+	// Subnet ID may span multiple fields. Here, we get the first of two (this function supports up to 16 bits, so we never have multiple overlaps).
+	firstHextet := int(math.Floor(float64(ip.GetPrefix() / 16)))
+
+	//fmt.Printf("nets:\t%d\nnbits:\t%d\nmask:\t%s\naddr\t%s\nfirstHextet: %d\tvalue: %016b\nmax: %d\n", nets, nbits, getMask(ip.GetPrefix()).PrintBinary(), ip.PrintBinary(), firstHextet, ip[firstHextet], max)
+	var ret []IpAddr
+	max := int(math.Pow(2, float64(nbits)))
+	for i := 0; i < max; i += int(math.Ceil(float64(max) / float64(nets))) {
+		// We now have a different subnet on each iteration. Now, to put that mask into the IP address... //
+		addr := ip
+
+		// Get the first half of the subnet id and insert it into the appropriate address field
+		fSubnetIdLen := uint((ip.GetPrefix() + nbits) % 16) // Get the amount of bits before the next field
+		fSubnetId := i & (smask(nbits) ^ smask(int(fSubnetIdLen))) >> fSubnetIdLen // Get the number of bits in the subnet ID that won't overhang, and right-justify them
+		addr[firstHextet] ^= fSubnetId // Put the first half of this ID into the appropriate field of the address
+
+		// Do the same for the second half, even if there isn't one
+		lSubnetId := i & smask(nbits - int(fSubnetIdLen)) << uint(16 - (nbits - int(fSubnetIdLen)))
+		addr[firstHextet + 1] ^= lSubnetId
+
+		ret = append(ret, addr)
+	}
+
+	return ret, nil
+}
+
+// Returns this address incremented by `amt`, starting from the rightmost hextet and working left
+func (ip Ipv6Addr) increment(amt float64) (addr Ipv6Addr) {
+	addr = ip
+	for i := 7; i >= 0; i-- {
+		if amt >= 0xFFFF {
+			amt -= float64(0xFFFF - addr[i])
+			addr[i] = 0xFFFF
+		} else {
+			addr[i] += int(amt) // cast OK because we're under 65k
+			break
+		}
+	}
+
+	return
+}
+
+
+// See IPv4's implementation
+// This is just a helper for IPv6, since it doesn't actually have a subnet mask like IPv4 does
+func getMask(prefix int) (ret Ipv6Addr) {
+	for i := 0; i < 8; i++ {
+		j := 0xFFFF
+		for ; j > 0 && prefix > 0; j >>= 1 {
+			prefix--
+		}
+		ret[i] = 0xFFFF - j
+	}
+	return ret
 }

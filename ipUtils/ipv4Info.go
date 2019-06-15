@@ -44,18 +44,12 @@ func ParseIpv4(str string) (addr Ipv4Addr, err error) {
 
 // Returns the padded binary representation of the IP address
 func (ip Ipv4Addr) PrintBinary() (s string) {
-	for i, octet := range ip {
-		formatted := strconv.FormatInt(int64(octet), 2)
-		for ; 8-len(formatted) > 0; {
-			formatted = "0" + formatted
-		}
-		s += formatted
+	for i, octet := range ip[:4] {
+		s += fmt.Sprintf("%08b", octet)
 		if i < 3 {
 			s += "."
 		} else if i == 3 && ip.IsCidrFormatted() {
-			s += "/"
-		} else {
-			break
+			s += fmt.Sprintf("/%08b", ip.GetPrefix())
 		}
 	}
 
@@ -148,33 +142,11 @@ func (ip Ipv4Addr) PrintNetworkAddress() (s string) {
 	return s
 }
 
-// Describes the IP address as best it can:
-// - Public / private
-// - Class if private
-// - Type (APIPA / loopback / multicast / broadcast / unicast / network)
-func (ip Ipv4Addr) Describe() (ret []int) {
-	class := ip.GetClass()
-	ret = append(ret, class)
-
-	if class != NOT_CLASSFUL {
-		ret = append(ret, PRIVATE)
-	} else {
-		ret = append(ret, PUBLIC)
-	}
-
-	ret = append(ret, ip.GetType())
-
-	return ret
+// WIP function that auto-subnets an IPv4 address
+// @param `nets`: number of desired subnets. Must be <= 65536
+// Returns the resultant list of subnets or an error
+// @author Racquel Meyer
+func (ip Ipv4Addr) Subnet(nets uint) ([]IpAddr, error) {
+	// TODO
+	return nil, fmt.Errorf("unimplemented")
 }
-
-// TODO
-/*// Returns 'true' if the IP address is special, meaning:
-// - it is a normal private IP (see GetClass())
-// - it is reserved or commonly used in a special way according to Wikipedia's IPv4#Addressing section
-func (ip Ipv4Addr) isSpecial() bool {
-	// See https://en.wikipedia.org/wiki/IPv4#Addressing
-	return ip.GetClass() != NOT_CLASSFUL &&
-		!(ip[0] == 100 && (ip[1] >= 64 && ip[1] <= 127)) && // "Shared address space for communications between a service provider and its subscribers when using a carrier-grade NAT."
-		!(ip[0] == 192 && ip[1] == 0 && ip[2] == 0) && // "IETF Protocol Assignments."
-		!(ip[0] == 198 && (ip[1] == 18 || ip[1] == 19)) // "Used for benchmark testing of inter-network communications between two separate subnets."
-}*/
