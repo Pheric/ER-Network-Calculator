@@ -204,7 +204,6 @@ func (ip Ipv6Addr) Subnet(nets int) ([]IpAddr, error) {
 
 	var ret []IpAddr
 	max := int(math.Pow(2, float64(nbits)))
-	//fmt.Printf("nets:\t%d\nnbits:\t%d\nmask:\t%s\naddr\t%s\nfirstHextet: %d\tvalue: %016b\nmax: %d\n", nets, nbits, getMask(ip.GetPrefix()).PrintBinary(), ip.PrintBinary(), firstHextet, ip[firstHextet], max)
 	for i := 0; i < max; i += int(math.Ceil(float64(max) / float64(nets))) {
 		// We now have a different subnet on each iteration. Now, to put that mask into the IP address... //
 		addr := ip
@@ -223,10 +222,6 @@ func (ip Ipv6Addr) Subnet(nets int) ([]IpAddr, error) {
 		addr[firstHextet + 1] ^= lSubnetId
 
 		ret = append(ret, addr)
-
-		/*if i>20000&&i<22000 {
-			fmt.Printf("fSubnetIdLen: %d/%d\tfSubnetId: %016b\tAffctdFld: %016b\t\tlSubnetId: %d\tAffctdFld: %016b\n", fSubnetIdLen, nbits, fSubnetId, addr[firstHextet], lSubnetId, addr[firstHextet+1])
-		}*/
 	}
 
 	return ret, nil
