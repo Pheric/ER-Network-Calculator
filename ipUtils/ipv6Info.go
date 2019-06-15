@@ -168,9 +168,9 @@ func (ip Ipv6Addr) PrintNetworkAddress() (s string) {
 // WIP function that auto-subnets an IPv6 address
 // @param `nets`: number of desired subnets. Must be <= 65536
 // Returns the resultant list of subnets or an error
-func (ip Ipv6Addr) Subnet(nets uint) ([]IpAddr, error) {
+func (ip Ipv6Addr) Subnet(nets int) ([]IpAddr, error) {
 	// f(x) gets the number of bits required to represent x
-	f := func(x uint) float64 {
+	f := func(x int) float64 {
 		return math.Ceil(math.Log(float64(x)) / math.Log(2)) // change of base formula for log base 2 of x. Go uses Log() as *natural* log (why?!)
 	}
 
@@ -187,6 +187,8 @@ func (ip Ipv6Addr) Subnet(nets uint) ([]IpAddr, error) {
 		return nil, fmt.Errorf("requiring over 16 bits is not supported")
 	} else if ip.GetPrefix() + nbits > 64 {
 		return nil, fmt.Errorf("network is too small to subnet properly")
+	} else if nets <= 0 {
+		return nil, fmt.Errorf("invalid number of subnets")
 	}
 
 	// Convert to a network address //
@@ -200,16 +202,20 @@ func (ip Ipv6Addr) Subnet(nets uint) ([]IpAddr, error) {
 	// Subnet ID may span multiple fields. Here, we get the first of two (this function supports up to 16 bits, so we never have multiple overlaps).
 	firstHextet := int(math.Floor(float64(ip.GetPrefix() / 16)))
 
-	//fmt.Printf("nets:\t%d\nnbits:\t%d\nmask:\t%s\naddr\t%s\nfirstHextet: %d\tvalue: %016b\nmax: %d\n", nets, nbits, getMask(ip.GetPrefix()).PrintBinary(), ip.PrintBinary(), firstHextet, ip[firstHextet], max)
 	var ret []IpAddr
 	max := int(math.Pow(2, float64(nbits)))
+	//fmt.Printf("nets:\t%d\nnbits:\t%d\nmask:\t%s\naddr\t%s\nfirstHextet: %d\tvalue: %016b\nmax: %d\n", nets, nbits, getMask(ip.GetPrefix()).PrintBinary(), ip.PrintBinary(), firstHextet, ip[firstHextet], max)
 	for i := 0; i < max; i += int(math.Ceil(float64(max) / float64(nets))) {
 		// We now have a different subnet on each iteration. Now, to put that mask into the IP address... //
 		addr := ip
+		addr[8] = ip.GetPrefix() + nbits
 
 		// Get the first half of the subnet id and insert it into the appropriate address field
 		fSubnetIdLen := uint((ip.GetPrefix() + nbits) % 16) // Get the amount of bits before the next field
 		fSubnetId := i & (smask(nbits) ^ smask(int(fSubnetIdLen))) >> fSubnetIdLen // Get the number of bits in the subnet ID that won't overhang, and right-justify them
+		if fSubnetIdLen == uint(nbits) { // We're wrong, there is not overlap. Oops.
+			fSubnetId = i
+		}
 		addr[firstHextet] ^= fSubnetId // Put the first half of this ID into the appropriate field of the address
 
 		// Do the same for the second half, even if there isn't one
@@ -217,6 +223,10 @@ func (ip Ipv6Addr) Subnet(nets uint) ([]IpAddr, error) {
 		addr[firstHextet + 1] ^= lSubnetId
 
 		ret = append(ret, addr)
+
+		/*if i>20000&&i<22000 {
+			fmt.Printf("fSubnetIdLen: %d/%d\tfSubnetId: %016b\tAffctdFld: %016b\t\tlSubnetId: %d\tAffctdFld: %016b\n", fSubnetIdLen, nbits, fSubnetId, addr[firstHextet], lSubnetId, addr[firstHextet+1])
+		}*/
 	}
 
 	return ret, nil

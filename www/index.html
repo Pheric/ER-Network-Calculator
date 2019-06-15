@@ -2,14 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgo=">
     <link rel="stylesheet" type="text/css" href="/stylesheets/header.css"/>
     <title>ER Network Calculator</title>
 </head>
 <body style="font-family: monospace">
 {{ template "header.html" }}
 
+{{ if .Error }}
+<h3>Error: {{ .Error }}</h3>
+{{ end }}
 {{ if .CAddr }}
-    {{ if not .Error }}
         <p>Address: {{ .CAddr.Print }}</p>
         <p>Binary: {{ .BinAddr }}</p>
         {{ if .IsCidr }}
@@ -59,12 +62,20 @@
             {{ end }}
         {{ end }}
         </p>
-    {{ else }}
-        <p>Invalid IP address ({{ .Error }})</p>
-    {{ end }}
+
+        {{ if not .SubnetErr }}
+            {{ range .Subnets }}
+                <p>{{ .Print }}</p>
+            {{ end }}
+        {{ else }}
+            Cannot subnet: {{ .SubnetErr.Error }}
+        {{ end }}
+{{ else }}
+    <h3>Enter an address</h3>
 {{ end }}
 <form action="/" method="get">
     <input name="addr" type="text">
+    <input name="subnets" type="number">
     <input type="submit">
 </form>
 </body>

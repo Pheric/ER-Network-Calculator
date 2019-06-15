@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -17,6 +18,8 @@ type IndexResponse struct {
 	IsValid bool
 	IsCidr  bool
 	IsIpv6  bool
+	Subnets []ipUtils.IpAddr
+	SubnetErr error
 	Error   string
 }
 
@@ -32,12 +35,19 @@ func serveIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := t.Execute(w, getIpInfo(r.URL.Query().Get("addr"))); err != nil {
+	subnets := -1
+	if _s := r.URL.Query().Get("subnets"); _s != "" {
+		if s, err := strconv.Atoi(_s); err == nil && s > 0 {
+			subnets = s
+		}
+	}
+
+	if err := t.Execute(w, getIpInfo(r.URL.Query().Get("addr"), subnets)); err != nil {
 		log.Printf("error executing index template: %v\n", err)
 	}
 }
 
-func getIpInfo(addr string) IndexResponse {
+func getIpInfo(addr string, subnets int) IndexResponse {
 	if addr == "" {
 		return IndexResponse{}
 	}
@@ -62,6 +72,8 @@ func getIpInfo(addr string) IndexResponse {
 		}
 	}
 
+	snl, sne := ip.Subnet(subnets)
+
 	return IndexResponse{
 		CAddr:   ip,
 		IsValid: true,
@@ -69,5 +81,7 @@ func getIpInfo(addr string) IndexResponse {
 		BinAddr: ip.PrintBinary(),
 		Prefix:  ip.GetPrefix(),
 		Network: ip.PrintNetworkAddress(),
+		Subnets: snl,
+		SubnetErr: sne,
 	}
 }

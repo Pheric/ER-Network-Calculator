@@ -8,7 +8,7 @@ type IpAddr interface {
 	GetClass() int
 	GetType() int
 	PrintNetworkAddress() (s string)
-	Subnet(nets uint) ([]IpAddr, error)
+	Subnet(nets int) ([]IpAddr, error)
 }
 
 const (

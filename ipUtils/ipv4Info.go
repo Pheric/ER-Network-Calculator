@@ -146,7 +146,7 @@ func (ip Ipv4Addr) PrintNetworkAddress() (s string) {
 // @param `nets`: number of desired subnets. Must be <= 65536
 // Returns the resultant list of subnets or an error
 // @author Racquel Meyer
-func (ip Ipv4Addr) Subnet(nets uint) ([]IpAddr, error) {
+func (ip Ipv4Addr) Subnet(nets int) ([]IpAddr, error) {
 	// TODO
 	return nil, fmt.Errorf("unimplemented")
 }
