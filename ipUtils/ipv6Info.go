@@ -128,7 +128,7 @@ func (ip Ipv6Addr) GetType() int {
 		return TRANSIENT_MULTICAST
 	} else if ip.isOfType(0x2000, 3) {
 		return UNICAST
-	}// TODO Solicited-Node multicast (FF02:0:0:0:0:1:FF00::/104
+	} // TODO Solicited-Node multicast (FF02:0:0:0:0:1:FF00::/104
 	return -1
 }
 
@@ -140,7 +140,7 @@ func (ip Ipv6Addr) isOfType(mask int, prefix int) bool {
 	ok := true
 
 	for i := 0; ok && i < 8; i++ {
-		if m[i] & ip[i] != m[i] & mask {
+		if m[i]&ip[i] != m[i]&mask {
 			ok = false
 		}
 	}
@@ -185,7 +185,7 @@ func (ip Ipv6Addr) Subnet(nets int) ([]IpAddr, error) {
 		return nil, fmt.Errorf("address has no indicated network")
 	} else if nbits > 16 {
 		return nil, fmt.Errorf("requiring over 16 bits is not supported")
-	} else if ip.GetPrefix() + nbits > 64 {
+	} else if ip.GetPrefix()+nbits > 64 {
 		return nil, fmt.Errorf("network is too small to subnet properly")
 	} else if nets <= 0 {
 		return nil, fmt.Errorf("invalid number of subnets")
@@ -199,27 +199,35 @@ func (ip Ipv6Addr) Subnet(nets int) ([]IpAddr, error) {
 
 	// Subnet //
 
+	// Whether the subnet ID will need to be split into two pieces
+	split := true
 	// Subnet ID may span multiple fields. Here, we get the first of two (this function supports up to 16 bits, so we never have multiple overlaps).
-	firstHextet := int(math.Floor(float64(ip.GetPrefix() / 16)))
+	fieldIndex := int(math.Ceil(float64(ip.GetPrefix())/16)) - 1
+	// Find the number of bits available in the (first) field that will be used by the subnet ID
+	bitsAvail := 16 - (ip.GetPrefix() % 16)
+	if ip.GetPrefix()%16 == 0 || bitsAvail == nbits {
+		fieldIndex++ // Address ends right on a delimiter, so we get the next field
+		split = false
+	}
+
+	// checking fieldIndex: fmt.Printf("fieldIndex: %d / %d = %f -> ceil = %f - 1 = %f [+1? split: %v]\tbitsAvail: %d\tnbits: %d\n", ip.GetPrefix(), 16, float64(ip.GetPrefix()) / 16, math.Ceil(float64(ip.GetPrefix())/16), math.Ceil(float64(ip.GetPrefix())/16)-1, split, bitsAvail, nbits)
 
 	var ret []IpAddr
 	max := int(math.Pow(2, float64(nbits)))
-	for i := 0; i < max; i += int(math.Ceil(float64(max) / float64(nets))) {
+	for i := 0; i < max; i += int(math.Floor(float64(max) / float64(nets))) {
 		// We now have a different subnet on each iteration. Now, to put that mask into the IP address... //
 		addr := ip
 		addr[8] = ip.GetPrefix() + nbits
 
-		// Get the first half of the subnet id and insert it into the appropriate address field
-		fSubnetIdLen := uint((ip.GetPrefix() + nbits) % 16) // Get the amount of bits before the next field
-		fSubnetId := i & (smask(nbits) ^ smask(int(fSubnetIdLen))) >> fSubnetIdLen // Get the number of bits in the subnet ID that won't overhang, and right-justify them
-		if fSubnetIdLen == uint(nbits) { // We're wrong, there is not overlap. Oops.
-			fSubnetId = i
+		var fSubnetId, lSubnetId int
+		if !split { // The subnet ID will not extend into the next field, so we don't need to split it.
+			fSubnetId = i << uint(16-nbits)
+		} else { // The subnet ID spills over into a second field, so we must split it
+			fSubnetId = i & (smask(nbits) ^ smask(bitsAvail)) >> uint(bitsAvail) // Get the bits in the subnet ID that won't overhang, and right-justify them
+			lSubnetId = i & smask(nbits-bitsAvail) << uint(16-(nbits-bitsAvail)) // Do the same for the second half, but left-justified
 		}
-		addr[firstHextet] ^= fSubnetId // Put the first half of this ID into the appropriate field of the address
-
-		// Do the same for the second half, even if there isn't one
-		lSubnetId := i & smask(nbits - int(fSubnetIdLen)) << uint(16 - (nbits - int(fSubnetIdLen)))
-		addr[firstHextet + 1] ^= lSubnetId
+		addr[fieldIndex] ^= fSubnetId   // Put the first half (if applicable) of this ID into the appropriate field of the address
+		addr[fieldIndex+1] ^= lSubnetId // Do the same for the second (overhanging) half, even if unset (not required)
 
 		ret = append(ret, addr)
 	}
@@ -242,7 +250,6 @@ func (ip Ipv6Addr) increment(amt float64) (addr Ipv6Addr) {
 
 	return
 }
-
 
 // See IPv4's implementation
 // This is just a helper for IPv6, since it doesn't actually have a subnet mask like IPv4 does

@@ -32,6 +32,7 @@ func setupClFlags() {
 }
 
 var readme []byte
+
 func setupReadMe() {
 	md, err := ioutil.ReadFile("./readme.md")
 	if err != nil {

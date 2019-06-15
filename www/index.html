@@ -64,9 +64,20 @@
         </p>
 
         {{ if not .SubnetErr }}
-            {{ range .Subnets }}
-                <p>{{ .Print }}</p>
-            {{ end }}
+            <table>
+                <tr>
+                    <th>#</th>
+                    <th>Subnet<sub>16</sub></th>
+                    <th>Subnet<sub>2</sub></th>
+                </tr>
+                {{ range $i, $s := .Subnets }}
+                    <tr>
+                        <td>{{ $i }}</td>
+                        <td>{{ $s.Print }}</td>
+                        <td>{{ $s.PrintBinary }}</td>
+                    </tr>
+                {{ end }}
+            </table>
         {{ else }}
             Cannot subnet: {{ .SubnetErr.Error }}
         {{ end }}
@@ -74,7 +85,7 @@
     <h3>Enter an address</h3>
 {{ end }}
 <form action="/" method="get">
-    <input name="addr" type="text">
+    <input name="addr" type="text" placeholder="IPv4/6 address, prefix optional">
     <input name="subnets" type="number" placeholder="# desired subnets or nil">
     <input type="submit">
 </form>

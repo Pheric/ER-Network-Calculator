@@ -11,16 +11,16 @@ import (
 )
 
 type IndexResponse struct {
-	CAddr   ipUtils.IpAddr
-	BinAddr string
-	Network string
-	Prefix  int
-	IsValid bool
-	IsCidr  bool
-	IsIpv6  bool
-	Subnets []ipUtils.IpAddr
+	CAddr     ipUtils.IpAddr
+	BinAddr   string
+	Network   string
+	Prefix    int
+	IsValid   bool
+	IsCidr    bool
+	IsIpv6    bool
+	Subnets   []ipUtils.IpAddr
 	SubnetErr error
-	Error   string
+	Error     string
 }
 
 func serveIndex(w http.ResponseWriter, r *http.Request) {
@@ -75,13 +75,13 @@ func getIpInfo(addr string, subnets int) IndexResponse {
 	snl, sne := ip.Subnet(subnets)
 
 	return IndexResponse{
-		CAddr:   ip,
-		IsValid: true,
-		IsCidr:  ip.IsCidrFormatted(),
-		BinAddr: ip.PrintBinary(),
-		Prefix:  ip.GetPrefix(),
-		Network: ip.PrintNetworkAddress(),
-		Subnets: snl,
+		CAddr:     ip,
+		IsValid:   true,
+		IsCidr:    ip.IsCidrFormatted(),
+		BinAddr:   ip.PrintBinary(),
+		Prefix:    ip.GetPrefix(),
+		Network:   ip.PrintNetworkAddress(),
+		Subnets:   snl,
 		SubnetErr: sne,
 	}
 }
