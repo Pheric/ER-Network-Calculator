@@ -86,12 +86,9 @@ func (ip Ipv6Addr) Print() (s string) {
 		if i < 7 {
 			s += ":"
 		} else if i == 7 && ip.IsCidrFormatted() {
-			s += "/"
-		} else {
-			break
+			s += fmt.Sprintf("/%d", ip[8])
 		}
 	}
-	s += strconv.Itoa(ip[8])
 
 	return s
 }
@@ -205,26 +202,28 @@ func (ip Ipv6Addr) Subnet(nets int) ([]IpAddr, error) {
 	fieldIndex := int(math.Ceil(float64(ip.GetPrefix())/16)) - 1
 	// Find the number of bits available in the (first) field that will be used by the subnet ID
 	bitsAvail := 16 - (ip.GetPrefix() % 16)
-	if ip.GetPrefix()%16 == 0 || bitsAvail == nbits {
-		fieldIndex++ // Address ends right on a delimiter, so we get the next field
+	if ip.GetPrefix()%16 == 0 || bitsAvail >= nbits {
 		split = false
-	}
 
-	// checking fieldIndex: fmt.Printf("fieldIndex: %d / %d = %f -> ceil = %f - 1 = %f [+1? split: %v]\tbitsAvail: %d\tnbits: %d\n", ip.GetPrefix(), 16, float64(ip.GetPrefix()) / 16, math.Ceil(float64(ip.GetPrefix())/16), math.Ceil(float64(ip.GetPrefix())/16)-1, split, bitsAvail, nbits)
+		if ip.GetPrefix()%16 == 0 {
+			fieldIndex++ // Address ends right on a delimiter, so we get the next field
+		}
+	}
+	//fmt.Printf("fieldIndex: %d / %d = %f -> ceil = %f - 1 = %f [+1? split: %v]\tbitsAvail: %d\tnbits: %d\n", ip.GetPrefix(), 16, float64(ip.GetPrefix()) / 16, math.Ceil(float64(ip.GetPrefix())/16), math.Ceil(float64(ip.GetPrefix())/16)-1, split, bitsAvail, nbits)
 
 	var ret []IpAddr
 	max := int(math.Pow(2, float64(nbits)))
-	for i := 0; i < max; i += int(math.Floor(float64(max) / float64(nets))) {
+	for i := 0; i < max; i += int(math.Floor(float64(max) / float64(nets))) { // Maximize hosts if possible; subnets otherwise
 		// We now have a different subnet on each iteration. Now, to put that mask into the IP address... //
 		addr := ip
 		addr[8] = ip.GetPrefix() + nbits
 
 		var fSubnetId, lSubnetId int
 		if !split { // The subnet ID will not extend into the next field, so we don't need to split it.
-			fSubnetId = i << uint(16-nbits)
+			fSubnetId = i << uint(bitsAvail-nbits)
 		} else { // The subnet ID spills over into a second field, so we must split it
-			fSubnetId = i & (smask(nbits) ^ smask(bitsAvail)) >> uint(bitsAvail) // Get the bits in the subnet ID that won't overhang, and right-justify them
-			lSubnetId = i & smask(nbits-bitsAvail) << uint(16-(nbits-bitsAvail)) // Do the same for the second half, but left-justified
+			fSubnetId = (i & (smask(bitsAvail) << uint(nbits-bitsAvail))) >> uint(nbits-bitsAvail) // Get the bits in the subnet ID that won't overhang, and right-justify them
+			lSubnetId = (i & smask(nbits-bitsAvail)) << uint(16-(nbits-bitsAvail))                 // Do the same for the second half, but left-justified
 		}
 		addr[fieldIndex] ^= fSubnetId   // Put the first half (if applicable) of this ID into the appropriate field of the address
 		addr[fieldIndex+1] ^= lSubnetId // Do the same for the second (overhanging) half, even if unset (not required)
